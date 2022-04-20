@@ -14,8 +14,10 @@ export default function Board() {
   const [index, setIndex] = useState(0);
   const [state, setState] = useState(new Array(9).fill(null));
 
+  const boardSize = 7;
+
   let isPrevDisabled = index <= 1;
-  let isNextDisabled = state[index] !== null && index < 9 ? false : true ;
+  let isNextDisabled = state[index] !== null && index < 9 ? false : true;
 
   const fillBoard = () => {
     const gState = [...state];
@@ -32,7 +34,6 @@ export default function Board() {
         )
     );
     gState[index] = {
-      error,
       queens,
       board: JSON.parse(JSON.stringify(boardData)),
     };
@@ -51,7 +52,9 @@ export default function Board() {
         element.isConflict = false;
       })
     );
+    
     setBoard(boardData);
+    return boardData
   };
 
   useEffect(() => {
@@ -104,7 +107,6 @@ export default function Board() {
     for (let colIndex = 0; colIndex < 8; colIndex++) {
       for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
         if (boardData[colIndex][rowIndex].hasAQueen) {
-          
           // ** Horizontal
           boardData.forEach((row) => (row[rowIndex].isConflict = true));
 
@@ -120,21 +122,21 @@ export default function Board() {
             c = 0;
             r = rowIndex - colIndex;
           }
-          while (c <= 7 && r <= 7) {
+          while (c <= boardSize && r <= boardSize) {
             boardData[c][r].isConflict = true;
             c++;
             r++;
           }
 
           // ** ↙
-          if (colIndex + rowIndex <= 7) {
+          if (colIndex + rowIndex <= boardSize) {
             c = rowIndex + colIndex;
             r = 0;
           } else {
-            c = 7;
+            c = boardSize;
             r = rowIndex + colIndex - c;
           }
-          while (c >= 0 && r <= 7) {
+          while (c >= 0 && r <= boardSize) {
             boardData[c][r].isConflict = true;
             c--;
             r++;
@@ -151,7 +153,6 @@ export default function Board() {
     const colIndex = rows.findIndex((r) => r === x);
     const rowIndex = cols.findIndex((c) => c === y);
 
-
     if (
       !(
         boardData[colIndex][rowIndex].isConflict ||
@@ -159,15 +160,14 @@ export default function Board() {
       )
     ) {
       setError(null);
-      const row = {...boardData[colIndex][rowIndex]}
+      const row = { ...boardData[colIndex][rowIndex] };
       row.hasAQueen = true;
-      boardData[colIndex][rowIndex] = row
+      boardData[colIndex][rowIndex] = row;
 
-      setBoard(boardData)
-      setQueens(queens + 1)
+      setBoard(boardData);
+      setQueens(queens + 1);
 
       return [queens + 1, boardData];
-
     } else {
       setError("Invalid cell");
       return [queens, boardData];
@@ -185,48 +185,91 @@ export default function Board() {
     setQueens(queens - 1);
   };
 
-  const handleClick = (e) => {
-    const gState = [...state];
+  function clone(obj) {
+    let copy;
 
-    const currentState = addQueenToBoard({
-      x: e.target.attrs.x,
-      y: e.target.attrs.y,
-    });
+    // Handle the 3 simple types, and null or undefined
+    if (null == obj || "object" != typeof obj) return obj;
 
-    putCellsInConflict();
+    // Handle Array
+    if (obj instanceof Array) {
+      copy = [];
+      for (var i = 0, len = obj.length; i < len; i++) {
+        copy[i] = clone(obj[i]);
+      }
+      return copy;
+    }
 
-    gState[index] = {
-      error,
-      queens: currentState[0],
-      board: JSON.parse(JSON.stringify(currentState[1])),
-    };
-    
+    // Handle Object
+    if (obj instanceof Object) {
+      copy = {};
+      for (var attr in obj) {
+        if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
+      }
+      return copy;
+    }
+
+    throw new Error("Unable to copy obj! Its type isn't supported.");
+  }
+
+  const saveState = (currentState) => {
+    const gState = JSON.parse(JSON.stringify(state));
+
+    const obj = clone({ ...gState[index] });
+
+    obj.queens = currentState[0];
+    obj.board = JSON.parse(JSON.stringify(currentState[1]));
+
+    gState[index] = obj;
+
+    for (let i = index + 1; i < 9; i++) {
+      gState[i] = null;
+    }
+
     setIndex(index + 1);
     setState(gState);
   };
 
+  const handleClick = (e) => {
+    const currentState = addQueenToBoard({
+      x: e.target.attrs.x,
+      y: e.target.attrs.y,
+    });
+    putCellsInConflict();
+
+    saveState(currentState);
+  };
+
   const handleReset = () => {
-    resetBoard();
-    setError(null);
+
+    let gState = [...state];
+    gState = new Array(9).fill(null);
+
+    const x = resetBoard();
+
+    gState[0] = {
+      queens: 0,
+      board: JSON.parse(JSON.stringify(x))
+    }
+
+    setState(gState)
+    setIndex(1)
     setQueens(0);
+    setError(null);
   };
 
   const handleDelete = (e) => {
-    const gState = [...state];
     deleteAQueen({
       x: e.target.attrs.x,
       y: e.target.attrs.y,
     });
     putCellsInConflict();
     setError(null);
-    // const newState = gState.slice(0, index);
-    // setState([...state, newState]);
-    
   };
 
   const handlePrev = () => {
     const gState = [...state];
-    const data = gState[index - 2];
+    const data = clone({ ...gState[index - 2] });
 
     setBoard(data.board);
     setError(data.error);
@@ -236,7 +279,7 @@ export default function Board() {
 
   const handleNext = () => {
     const gState = [...state];
-    const data = gState[index];
+    const data = clone({ ...gState[index] });
 
     setBoard(data.board);
     setError(data.error);
@@ -254,10 +297,20 @@ export default function Board() {
 
           <div className="mt-4">
             <ButtonGroup>
-              <Button color="primary" disabled={isPrevDisabled} onClick={handlePrev}>
+              <Button
+                className="xxx"
+                color="primary"
+                disabled={isPrevDisabled}
+                onClick={handlePrev}
+              >
                 Prev
               </Button>
-              <Button color="primary" disabled={isNextDisabled} onClick={handleNext}>
+              <Button
+                className="xxx"
+                color="primary"
+                disabled={isNextDisabled}
+                onClick={handleNext}
+              >
                 Next
               </Button>
             </ButtonGroup>

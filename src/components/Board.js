@@ -18,6 +18,7 @@ export default function Board() {
 
   let isPrevDisabled = index <= 1;
   let isNextDisabled = state[index] !== null && index < 9 ? false : true;
+  let isResetDisable = state[1] === null;
 
   const fillBoard = () => {
     const gState = [...state];
@@ -52,9 +53,9 @@ export default function Board() {
         element.isConflict = false;
       })
     );
-    
+
     setBoard(boardData);
-    return boardData
+    return boardData;
   };
 
   useEffect(() => {
@@ -194,7 +195,7 @@ export default function Board() {
     // Handle Array
     if (obj instanceof Array) {
       copy = [];
-      for (var i = 0, len = obj.length; i < len; i++) {
+      for (var i = 0; i < obj.length; i++) {
         copy[i] = clone(obj[i]);
       }
       return copy;
@@ -215,7 +216,7 @@ export default function Board() {
   const saveState = (currentState) => {
     const gState = JSON.parse(JSON.stringify(state));
 
-    const obj = clone({ ...gState[index] });
+    const obj = {};
 
     obj.queens = currentState[0];
     obj.board = JSON.parse(JSON.stringify(currentState[1]));
@@ -241,19 +242,18 @@ export default function Board() {
   };
 
   const handleReset = () => {
-
-    let gState = [...state];
+    let gState = JSON.parse(JSON.stringify(state));
     gState = new Array(9).fill(null);
 
     const x = resetBoard();
 
     gState[0] = {
       queens: 0,
-      board: JSON.parse(JSON.stringify(x))
-    }
+      board: JSON.parse(JSON.stringify(x)),
+    };
 
-    setState(gState)
-    setIndex(1)
+    setState(gState);
+    setIndex(1);
     setQueens(0);
     setError(null);
   };
@@ -268,21 +268,22 @@ export default function Board() {
   };
 
   const handlePrev = () => {
-    const gState = [...state];
-    const data = clone({ ...gState[index - 2] });
+    const gState = JSON.parse(JSON.stringify(state));
+    const data = clone(gState[index - 2]);
+
+
+    const obj = clone()
 
     setBoard(data.board);
-    setError(data.error);
     setQueens(data.queens);
     setIndex(index - 1);
   };
 
   const handleNext = () => {
-    const gState = [...state];
-    const data = clone({ ...gState[index] });
+    const gState = JSON.parse(JSON.stringify(state));
+    const data = clone(gState[index]);
 
     setBoard(data.board);
-    setError(data.error);
     setQueens(data.queens);
     setIndex(index + 1);
   };
@@ -291,7 +292,11 @@ export default function Board() {
     <Row>
       <Col md="3" className="d-flex justify-content-center mt-5">
         <div>
-          <Button color="primary" onClick={handleReset}>
+          <Button
+            color="danger"
+            disabled={isResetDisable}
+            onClick={handleReset}
+          >
             Reset
           </Button>
 
